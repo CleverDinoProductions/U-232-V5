@@ -1,4 +1,4 @@
-# U-232-V5
+## U-232-V5
 
 ```
    _   _   _   _   _     _   _   _   _   _   _     _   _   _   _	
@@ -8,9 +8,9 @@
 
 ```
 
-U-232 V5 -> High performance Bittorrent tracker
+### U-232 V5 -> High performance Bittorrent tracker
 
-## Credits
+### Credits
 
 All Credit goes to the original code creators, and especially to any author for the modifications I selected for U-232.
 
