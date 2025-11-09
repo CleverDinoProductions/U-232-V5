@@ -356,9 +356,95 @@ function userlogin()
             return;
         }
         $row = mysqli_fetch_assoc($res);
+
+        // ============================================
+        // PHP 7+ COMPATIBILITY FIX - START
+        // ============================================
+        if (!is_array($row)) {
+            $row = array();
+        }
+
+        // Ensure ALL fields exist with safe defaults
+        $row_defaults = array(
+            'id' => 0,
+            'username' => 'Guest',
+            'class' => 0,
+            'override_class' => 255,
+            'last_access' => 0,
+            'last_access_numb' => TIME_NOW,
+            'onlinetime' => 0,
+            'ip' => $ip,
+            'stylesheet' => '1',
+            'categorie_icon' => '1',
+            'language' => 'en',
+            'uploaded' => 0,
+            'downloaded' => 0,
+            'seedbonus' => 0,
+            'last_login' => TIME_NOW,
+            'added' => TIME_NOW,
+            'curr_ann_last_check' => 0,
+            'curr_ann_id' => 0,
+            'av_w' => 0,
+            'av_h' => 0,
+            'country' => 0,
+            'warned' => 'no',
+            'torrentsperpage' => 50,
+            'topicsperpage' => 20,
+            'postsperpage' => 25,
+            'reputation' => 0,
+            'dst_in_use' => 0,
+            'auto_correct_dst' => 0,
+            'chatpost' => 1,
+            'smile_until' => 0,
+            'vip_until' => 0,
+            'freeslots' => 0,
+            'free_switch' => 0,
+            'invites' => 0,
+            'invitedby' => 0,
+            'uploadpos' => 1,
+            'forumpost' => 1,
+            'downloadpos' => 1,
+            'immunity' => 0,
+            'leechwarn' => 0,
+            'last_browse' => 0,
+            'sig_w' => 0,
+            'sig_h' => 0,
+            'forum_access' => 0,
+            'hit_and_run_total' => 0,
+            'donoruntil' => 0,
+            'donated' => 0,
+            'time_offset' => 0,
+            'total_donated' => 0,
+            'passhash' => '',
+            'secret' => '',
+            'torrent_pass' => '',
+            'email' => '',
+            'status' => 'confirmed',
+            'editsecret' => '',
+            'privacy' => 'normal',
+            'info' => '',
+            'acceptpms' => 'yes',
+            'avatar' => '',
+            'title' => '',
+            'notifs' => '',
+            'enabled' => 'yes',
+            'donor' => 'no'
+        );
+
+        // Merge defaults with actual row data
+        foreach ($row_defaults as $field => $default) {
+            if (!isset($row[$field]) || $row[$field] === null) {
+                $row[$field] = $default;
+            }
+        }
+        // ============================================
+        // PHP 7+ COMPATIBILITY FIX - END
+        // ============================================
+
         foreach ($user_fields_ar_int as $i) $row[$i] = (int)$row[$i];
         foreach ($user_fields_ar_float as $i) $row[$i] = (float)$row[$i];
-        foreach ($user_fields_ar_str as $i) $row[$i] = $row[$i];
+        foreach ($user_fields_ar_str as $i) $row[$i] = isset($row[$i]) ? $row[$i] : '';
+        $mc1->cache_value('MyUser_' . $id, $row, $INSTALLER09['expires']['curuser']);
         $mc1->cache_value('MyUser_' . $id, $row, $INSTALLER09['expires']['curuser']);
         unset($res);
     }
@@ -525,44 +611,83 @@ function userlogin()
     }
     // user stats - *Updated*
     $What_Cache = (XBT_TRACKER == true ? 'userstats_xbt_' : 'userstats_');
-    if (($stats = $mc1->get_value($What_Cache.$id)) === false) {
+if (($stats = $mc1->get_value($What_Cache.$id)) === false) {
     $What_Expire = (XBT_TRACKER == true ? $INSTALLER09['expires']['u_stats_xbt'] : $INSTALLER09['expires']['u_stats']);
-        $stats_fields_ar_int = array(
-            'uploaded',
-            'downloaded'
-        );
-        $stats_fields_ar_float = array(
-            'seedbonus'
-        );
-        $stats_fields_ar_str = array(
-            'modcomment',
-            'bonuscomment'
-        );
-        $stats_fields = implode(', ', array_merge($stats_fields_ar_int, $stats_fields_ar_float, $stats_fields_ar_str));
-        $s = sql_query("SELECT " . $stats_fields . " FROM users WHERE id=" . sqlesc($id)) or sqlerr(__FILE__, __LINE__);
-        $stats = mysqli_fetch_assoc($s);
-        foreach ($stats_fields_ar_int as $i) $stats[$i] = (int)$stats[$i];
-        foreach ($stats_fields_ar_float as $i) $stats[$i] = (float)$stats[$i];
-        foreach ($stats_fields_ar_str as $i) $stats[$i] = $stats[$i];
-        $mc1->cache_value($What_Cache.$id, $stats, $What_Expire);
+    $stats_fields_ar_int = array(
+        'uploaded',
+        'downloaded'
+    );
+    $stats_fields_ar_float = array(
+        'seedbonus'
+    );
+    $stats_fields_ar_str = array(
+        'modcomment',
+        'bonuscomment'
+    );
+    $stats_fields = implode(', ', array_merge($stats_fields_ar_int, $stats_fields_ar_float, $stats_fields_ar_str));
+    $s = sql_query("SELECT " . $stats_fields . " FROM users WHERE id=" . sqlesc($id)) or sqlerr(__FILE__, __LINE__);
+    $stats = mysqli_fetch_assoc($s);
+    
+    // Ensure $stats is an array with all required keys
+    if (!is_array($stats)) {
+        $stats = array();
     }
-    $row['seedbonus'] = $stats['seedbonus'];
-    $row['uploaded'] = $stats['uploaded'];
-    $row['downloaded'] = $stats['downloaded'];
+    
+    foreach ($stats_fields_ar_int as $i) {
+        $stats[$i] = isset($stats[$i]) ? (int)$stats[$i] : 0;
+    }
+    foreach ($stats_fields_ar_float as $i) {
+        $stats[$i] = isset($stats[$i]) ? (float)$stats[$i] : 0.0;
+    }
+    foreach ($stats_fields_ar_str as $i) {
+        $stats[$i] = isset($stats[$i]) ? $stats[$i] : '';
+    }
+    
+    $mc1->cache_value($What_Cache.$id, $stats, $What_Expire);
+}
+
+// Ensure $stats is valid before accessing
+if (!is_array($stats)) {
+    $stats = array(
+        'seedbonus' => 0,
+        'uploaded' => 0,
+        'downloaded' => 0
+    );
+}
+
+    $row['seedbonus'] = isset($stats['seedbonus']) ? $stats['seedbonus'] : 0;
+    $row['uploaded'] = isset($stats['uploaded']) ? $stats['uploaded'] : 0;
+    $row['downloaded'] = isset($stats['downloaded']) ? $stats['downloaded'] : 0;
+    
     //==
     if (($ustatus = $mc1->get_value('userstatus_' . $id)) === false) {
         $sql2 = sql_query('SELECT * FROM ustatus WHERE userid = ' . sqlesc($id));
-        if (mysqli_num_rows($sql2)) $ustatus = mysqli_fetch_assoc($sql2);
-        else $ustatus = array(
+        if (mysqli_num_rows($sql2)) {
+            $ustatus = mysqli_fetch_assoc($sql2);
+        } else {
+            $ustatus = array(
+                'last_status' => '',
+                'last_update' => 0,
+                'archive' => ''
+            );
+        }
+        $mc1->add_value('userstatus_' . $id, $ustatus, $INSTALLER09['expires']['u_status']); // 30 days
+    }
+
+    // Ensure $ustatus is always an array with required keys
+    if (!is_array($ustatus)) {
+        $ustatus = array(
             'last_status' => '',
             'last_update' => 0,
             'archive' => ''
         );
-        $mc1->add_value('userstatus_' . $id, $ustatus, $INSTALLER09['expires']['u_status']); // 30 days
     }
-    $row['last_status'] = $ustatus['last_status'];
-    $row['last_update'] = $ustatus['last_update'];
-    $row['archive'] = $ustatus['archive'];
+
+
+    // Safe array access with isset() - FIXES LINES 681, 682, 683
+    $row['last_status'] = isset($ustatus['last_status']) ? $ustatus['last_status'] : '';
+    $row['last_update'] = isset($ustatus['last_update']) ? $ustatus['last_update'] : 0;
+    $row['archive'] = isset($ustatus['archive']) ? $ustatus['archive'] : '';
     //==
     if ($row['ssluse'] > 1 && !isset($_SERVER['HTTPS']) && !defined('NO_FORCE_SSL')) {
         $INSTALLER09['baseurl'] = str_replace('http', 'https', $INSTALLER09['baseurl']);
@@ -579,12 +704,28 @@ function userlogin()
             die();
         }
         $CURBLOCK = mysqli_fetch_assoc($c_sql);
-        $CURBLOCK['index_page'] = (int)$CURBLOCK['index_page'];
-        $CURBLOCK['global_stdhead'] = (int)$CURBLOCK['global_stdhead'];
-        $CURBLOCK['userdetails_page'] = (int)$CURBLOCK['userdetails_page'];
+    
+        // Ensure $CURBLOCK is valid array
+        if (!is_array($CURBLOCK)) {
+            $CURBLOCK = array();
+        }
+    
+        $CURBLOCK['index_page'] = isset($CURBLOCK['index_page']) ? (int)$CURBLOCK['index_page'] : 0;
+        $CURBLOCK['global_stdhead'] = isset($CURBLOCK['global_stdhead']) ? (int)$CURBLOCK['global_stdhead'] : 0;
+        $CURBLOCK['userdetails_page'] = isset($CURBLOCK['userdetails_page']) ? (int)$CURBLOCK['userdetails_page'] : 0;
         $mc1->cache_value($blocks_key, $CURBLOCK, 0);
+    }   
+
+    // Additional safety check after cache retrieval
+    if (!is_array($CURBLOCK)) {
+        $CURBLOCK = array(
+            'index_page' => 0,
+            'global_stdhead' => 0,
+            'userdetails_page' => 0
+        );
     }
     //== where is by putyn
+    $where_is = array();
     $where_is['username'] = htmlsafechars($row['username']);
     $whereis_array = array(
         'index' => '%s is viewing the <a href="%s">home page</a>',
@@ -608,19 +749,39 @@ function userlogin()
         'details' => '%s is viewing the <a href="%s">torrents details page</a>',
         'unknown' => '%s location is unknown'
     );
-    if (preg_match('/\/(.*?)\.php/is', $_SERVER['REQUEST_URI'], $whereis_temp)) {
-        if (isset($whereis_array[$whereis_temp[1]])) $whereis = sprintf($whereis_array[$whereis_temp[1]], $where_is['username'], htmlsafechars($_SERVER['REQUEST_URI']));
-        else $whereis = sprintf($whereis_array['unknown'], $where_is['username']);
-    } else $whereis = sprintf($whereis_array['unknown'], $where_is['username']);
+
+    // Ensure $_SERVER['REQUEST_URI'] exists
+    $request_uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+
+    if ($request_uri && preg_match('/\/(.*?)\.php/is', $request_uri, $whereis_temp)) {
+        $page_name = isset($whereis_temp[1]) ? $whereis_temp[1] : '';
+        if ($page_name && isset($whereis_array[$page_name])) {
+            $whereis = sprintf($whereis_array[$page_name], $where_is['username'], htmlsafechars($request_uri));
+        } else {
+            $whereis = sprintf($whereis_array['unknown'], $where_is['username']);
+        }
+    } else {
+        $whereis = sprintf($whereis_array['unknown'], $where_is['username']);
+    }
     //== online time pdq, original code by superman
     $userupdate0 = 'onlinetime = onlinetime + 0';
-    $new_time = TIME_NOW - $row['last_access_numb'];
+
+    // Safe access to last_access_numb
+    $last_access_numb = isset($row['last_access_numb']) ? (int)$row['last_access_numb'] : TIME_NOW;
+    $new_time = TIME_NOW - $last_access_numb;
     $update_time = 0;
-    if ($new_time < 300) {
-        $userupdate0 = "onlinetime = onlinetime + " . $new_time;
-        $update_time = $new_time;
+
+    if ($new_time < 300 && $new_time >= 0) {
+        $userupdate0 = "onlinetime = onlinetime + " . (int)$new_time;
+        $update_time = (int)$new_time;
     }
+
     $userupdate1 = "last_access_numb = " . TIME_NOW;
+    //end online-time
+
+    // Safe access to onlinetime - FIXES LINE 725
+    $current_onlinetime = isset($row['onlinetime']) ? (int)$row['onlinetime'] : 0;
+    $update_time = $current_onlinetime + $update_time;
     //end online-time
     $update_time = ($row['onlinetime'] + $update_time);
     $add_set = (isset($add_set)) ? $add_set : '';
@@ -689,13 +850,19 @@ function autoclean()
 function get_template()
 {
     global $CURUSER, $INSTALLER09;
-    if (isset($CURUSER)) {
-        if (file_exists(TEMPLATE_DIR . "{$CURUSER['stylesheet']}/template.php")) {
-            require_once (TEMPLATE_DIR . "{$CURUSER['stylesheet']}/template.php");
+    
+    // Ensure $CURUSER is valid array
+    if (isset($CURUSER) && is_array($CURUSER)) {
+        // Safe access to stylesheet
+        $stylesheet = isset($CURUSER['stylesheet']) ? $CURUSER['stylesheet'] : (isset($INSTALLER09['stylesheet']) ? $INSTALLER09['stylesheet'] : '1');
+        
+        if (file_exists(TEMPLATE_DIR . "{$stylesheet}/template.php")) {
+            require_once (TEMPLATE_DIR . "{$stylesheet}/template.php");
         } else {
-            if (isset($INSTALLER09)) {
-                if (file_exists(TEMPLATE_DIR . "{$INSTALLER09['stylesheet']}/template.php")) {
-                    require_once (TEMPLATE_DIR . "{$INSTALLER09['stylesheet']}/template.php");
+            if (isset($INSTALLER09) && is_array($INSTALLER09)) {
+                $default_style = isset($INSTALLER09['stylesheet']) ? $INSTALLER09['stylesheet'] : '1';
+                if (file_exists(TEMPLATE_DIR . "{$default_style}/template.php")) {
+                    require_once (TEMPLATE_DIR . "{$default_style}/template.php");
                 } else {
                     echo "Sorry, Templates do not seem to be working properly and missing some code. Please report this to the programmers/owners.";
                 }
@@ -708,39 +875,51 @@ function get_template()
             }
         }
     } else {
-        if (file_exists(TEMPLATE_DIR . "{$INSTALLER09['stylesheet']}/template.php")) {
-            require_once (TEMPLATE_DIR . "{$INSTALLER09['stylesheet']}/template.php");
+        // User not logged in - use default template
+        if (isset($INSTALLER09) && is_array($INSTALLER09)) {
+            $default_style = isset($INSTALLER09['stylesheet']) ? $INSTALLER09['stylesheet'] : '1';
+            if (file_exists(TEMPLATE_DIR . "{$default_style}/template.php")) {
+                require_once (TEMPLATE_DIR . "{$default_style}/template.php");
+            } else {
+                echo "Sorry, Templates do not seem to be working properly and missing some code. Please report this to the programmers/owners.";
+            }
         } else {
-            echo "Sorry, Templates do not seem to be working properly and missing some code. Please report this to the programmers/owners.";
+            if (file_exists(TEMPLATE_DIR . "1/template.php")) {
+                require_once (TEMPLATE_DIR . "1/template.php");
+            } else {
+                echo "Sorry, Templates do not seem to be working properly and missing some code. Please report this to the programmers/owners.";
+            }
         }
     }
+    
+    // Ensure all required template functions exist
     if (!function_exists("stdhead")) {
-        echo "stdhead function missing";
         function stdhead($title = "", $message = true)
         {
             return "<html><head><title>$title</title></head><body>";
         }
     }
     if (!function_exists("stdfoot")) {
-        echo "stdfoot function missing";
         function stdfoot()
         {
             return "</body></html>";
         }
     }
     if (!function_exists("stdmsg")) {
-        echo "stdmgs function missing";
         function stdmsg($title, $message)
         {
             return "<b>" . $title . "</b><br />$message";
         }
     }
     if (!function_exists("StatusBar")) {
-        echo "StatusBar function missing";
         function StatusBar()
         {
             global $CURUSER, $lang;
-            return "{$lang['gl_msg_welcome']}, {$CURUSER['username']}";
+            if (isset($CURUSER) && is_array($CURUSER) && isset($CURUSER['username'])) {
+                $username = isset($CURUSER['username']) ? $CURUSER['username'] : 'Guest';
+                return (isset($lang['gl_msg_welcome']) ? $lang['gl_msg_welcome'] : 'Welcome') . ", {$username}";
+            }
+            return "Welcome, Guest";
         }
     }
 }
