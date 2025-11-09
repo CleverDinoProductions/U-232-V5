@@ -294,8 +294,9 @@ $htmlout .='
     //$percentsql  = number_format(($querytime / $seconds) * 100, 2);
     $percentmc = number_format(($cachetime / $seconds) * 100, 2);
     define('REQUIRED_PHP_VER', 7.0);
-    $MemStat = (PHP_VERSION_ID < REQUIRED_PHP_VER ? $mc1->getStats() : $mc1->getStats()["127.0.0.1:11211"]);
-    if (($MemStats = $mc1->get_value('mc_hits')) === false) {
+    $allStats = $mc1->getStats();
+    $MemStat = (PHP_VERSION_ID < REQUIRED_PHP_VER ? $allStats : (isset($allStats["127.0.0.1:11211"]) ? $allStats["127.0.0.1:11211"] : array()));
+    if (isset($MemStats['cmd_get']) && $MemStats['cmd_get'] != 0) {
         $MemStats =  $MemStat;
         if ($MemStats['cmd_get'] != 0) {
             $MemStats['Hits'] = number_format(($MemStats['get_hits'] / $MemStats['cmd_get']) * 100, 3);
@@ -306,17 +307,23 @@ $htmlout .='
     }
     // load averages - pdq
     if ($debug) {
-        if (($uptime = $mc1->get_value('uptime')) === false) {
-            $uptime = `uptime`;
-            $mc1->cache_value('uptime', $uptime, 25);
-        }
+      if (($uptime = $mc1->get_value('uptime')) === false) {
+          // Check if Windows or Linux
+          if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+              $uptime = "Windows Server - uptime command not available";
+          } else {
+              $uptime = @shell_exec('uptime') ?: 'uptime unavailable';
+          }
+          $mc1->cache_value('uptime', $uptime, 25);
+      }
+      if (strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN') {
         preg_match('/load average: (.*)$/i', $uptime, $load);
-    }
+      }
+  }
 
     //== end class
     $header = '';
-    $header = '' . $lang['gl_stdfoot_querys_mstat'] . ' ' . mksize(memory_get_peak_usage()) . ' ' . $lang['gl_stdfoot_querys_mstat1'] . ' ' . round($phptime, 2) . 's | ' . round($percentmc, 2) . '' . $lang['gl_stdfoot_querys_mstat2'] . '' . number_format($cachetime, 5) . 's ' . $lang['gl_stdfoot_querys_mstat3'] . '' . $MemStats['Hits'] . '' . $lang['gl_stdfoot_querys_mstat4'] . '' . (100 - $MemStats['Hits']) . '' . $lang['gl_stdfoot_querys_mstat5'] . '' . number_format($MemStats['curr_items']);
-    $htmlfoot = '';
+    $header = '' . $lang['gl_stdfoot_querys_mstat'] . ' ' . mksize(memory_get_peak_usage()) . ' ' . $lang['gl_stdfoot_querys_mstat1'] . ' ' . round($phptime, 2) . 's | ' . round($percentmc, 2) . '' . $lang['gl_stdfoot_querys_mstat2'] . '' . number_format($cachetime, 5) . 's ' . $lang['gl_stdfoot_querys_mstat3'] . '' . (isset($MemStats['Hits']) ? $MemStats['Hits'] : '0') . '' . $lang['gl_stdfoot_querys_mstat4'] . '' . (isset($MemStats['Hits']) ? (100 - $MemStats['Hits']) : '100') . '' . $lang['gl_stdfoot_querys_mstat5'] . '' . (isset($MemStats['curr_items']) ? number_format($MemStats['curr_items']) : '0');
     //== query stats
     $htmlfoot.= '';
     if (!empty($stdfoot['js'])) {
@@ -392,7 +399,9 @@ return $htmlout;
 function StatusBar()
 {
     global $CURUSER, $INSTALLER09, $lang, $rep_is_on, $mc1, $msgalert;
-    if (!$CURUSER) return "";
+    if (!is_array($CURUSER)) {
+      return "";
+    }
     $upped = mksize($CURUSER['uploaded']);
     $downed = mksize($CURUSER['downloaded']);
     $connectable = "";
@@ -489,11 +498,30 @@ $max = 999;
     if (($Achievement_Points = $mc1->get_value('user_achievement_points_' . $CURUSER['id'])) === false) {
         $Sql = sql_query("SELECT users.id, users.username, usersachiev.achpoints, usersachiev.spentpoints FROM users LEFT JOIN usersachiev ON users.id = usersachiev.id WHERE users.id = " . sqlesc($CURUSER['id'])) or sqlerr(__FILE__, __LINE__);
         $Achievement_Points = mysqli_fetch_assoc($Sql);
-        $Achievement_Points['id'] = (int)$Achievement_Points['id'];
-        $Achievement_Points['achpoints'] = (int)$Achievement_Points['achpoints'];
-        $Achievement_Points['spentpoints'] = (int)$Achievement_Points['spentpoints'];
-        $mc1->cache_value('user_achievement_points_' . $CURUSER['id'], $Achievement_Points, 0);
-    }
+    
+        // Initialize with defaults if NULL
+        if ($Achievement_Points) {
+            $Achievement_Points['id'] = isset($Achievement_Points['id']) ? (int)$Achievement_Points['id'] : 0;
+            $Achievement_Points['achpoints'] = isset($Achievement_Points['achpoints']) ? (int)$Achievement_Points['achpoints'] : 0;
+            $Achievement_Points['spentpoints'] = isset($Achievement_Points['spentpoints']) ? (int)$Achievement_Points['spentpoints'] : 0;
+        } else {
+            // If query returns nothing, create default structure
+            $Achievement_Points = array(
+                'id' => (int)$CURUSER['id'],
+                'achpoints' => 0,
+                'spentpoints' => 0
+          );
+        }
+    
+      $mc1->cache_value('user_achievement_points_' . $CURUSER['id'], $Achievement_Points, 0);
+  }
+
+  // Ensure achpoints key exists before using it
+  if (!isset($Achievement_Points['achpoints'])) {
+      $Achievement_Points['achpoints'] = 0;
+}
+
+
     //$hitnruns = ($CURUSER['hit_and_run_total'] > 0 ? $CURUSER['hit_and_run_total'] : '0');
     //{$lang['gl_hnr']}: <a href='".$INSTALLER09['baseurl']."/hnr.php?id=".$CURUSER['id']."'>{$hitnruns}</a>&nbsp;
     $member_reputation = get_reputation($CURUSER);

@@ -75,7 +75,7 @@ if (($top5torrents = $mc1->get_value('top5_tor_')) === false) {
     while ($top5torrent = mysqli_fetch_assoc($res)) $top5torrents[] = $top5torrent;
     $mc1->cache_value('top5_tor_', $top5torrents, $INSTALLER09['expires']['top5_torrents']);
 }
-if (count($top5torrents) > 0) {
+if (is_array($top5torrents) && count($top5torrents) > 0) {
     $HTMLOUT.= "<div class='module'><div class='tbadge tbadge-top'></div>
      	    <table class='table table-bordered'>
             <thead><tr>
@@ -86,8 +86,9 @@ if (count($top5torrents) > 0) {
 	    <th class=' col-md-3 text-center'>{$lang['top5torrents_health']}</th></tr></thead>";
 if ($top5torrents) {
         foreach ($top5torrents as $top5torrentarr) {
-            $top5torrentarr['cat_name'] = htmlsafechars($change[$top5torrentarr['category']]['name']);
-	    $top5torrentarr['cat_pic'] = htmlsafechars($change[$top5torrentarr['category']]['image']);
+            $category_id = isset($top5torrentarr['category']) ? $top5torrentarr['category'] : 0;
+            $top5torrentarr['cat_name'] = isset($change[$category_id]['name']) ? htmlsafechars($change[$category_id]['name']) : 'Unknown';
+            $top5torrentarr['cat_pic'] = isset($change[$category_id]['image']) ? htmlsafechars($change[$category_id]['image']) : 'default.png';
             $torrname = htmlsafechars($top5torrentarr['name']);
             if (strlen($torrname) > 50) $torrname = substr($torrname, 0, 50) . "...";
             $thealth = health($top5torrentarr['leechers'], $top5torrentarr['seeders']);
@@ -115,7 +116,7 @@ if (($last5torrents = $mc1->get_value('last5_tor_')) === false) {
     while ($last5torrent = mysqli_fetch_assoc($result)) $last5torrents[] = $last5torrent;
     $mc1->cache_value('last5_tor_', $last5torrents, $INSTALLER09['expires']['last5_torrents']);
 }
-if (count($last5torrents) > 0) {
+if (is_array($last5torrents) && count($last5torrents) > 0) {
     $HTMLOUT.= "<div class='module'><div class='tbadge tbadge-new'></div>
     	        <table class='table table-bordered'>
                 <thead><tr>
@@ -127,8 +128,9 @@ if (count($last5torrents) > 0) {
                 </tr></thead>";
     if ($last5torrents) {
         foreach ($last5torrents as $last5torrentarr) {
-            $last5torrentarr['cat_name'] = htmlsafechars($change[$last5torrentarr['category']]['name']);
-	    $last5torrentarr['cat_pic'] = htmlsafechars($change[$last5torrentarr['category']]['image']);
+            $category_id = isset($last5torrentarr['category']) ? $last5torrentarr['category'] : 0;
+            $last5torrentarr['cat_name'] = isset($change[$category_id]['name']) ? htmlsafechars($change[$category_id]['name']) : 'Unknown';
+            $last5torrentarr['cat_pic'] = isset($change[$category_id]['image']) ? htmlsafechars($change[$category_id]['image']) : 'default.png';
             $thealth = health($last5torrentarr['leechers'], $last5torrentarr['seeders']);
             $torrname = htmlsafechars($last5torrentarr['name']);
             if (strlen($torrname) > 50) $torrname = substr($torrname, 0, 50) . "...";

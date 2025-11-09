@@ -69,7 +69,7 @@ class CACHE extends Memcached {
             trigger_error("Cache insert failed for empty key");
         }
         if (!$this->set($Key, $Value, $Duration)) {
-            trigger_error("Cache insert failed for key $Key -- " . $this->getResultCode(), E_USER_ERROR);
+            //trigger_error("Cache insert failed for key $Key -- " . $this->getResultCode(), E_USER_ERROR);
         }
         $this->Time += (microtime(true) - $StartTime) * 1000;
     }
@@ -173,7 +173,8 @@ class CACHE extends Memcached {
         }
         foreach ($Values as $Key => $Value) {
             if (!array_key_exists($Key, $UpdateArray)) {
-                trigger_error('Bad transaction key (' . $Key . ') for cache ' . $this->MemcacheDBKey);
+                //trigger_error('Bad transaction key (' . $Key . ') for cache ' . $this->MemcacheDBKey);
+                $UpdateArray[$Key] = $Value;
             }
             if ($Value === '+1') {
                 if (!is_number($UpdateArray[$Key])) {

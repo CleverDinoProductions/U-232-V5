@@ -461,12 +461,14 @@ function userlogin()
             {
             // No Main Result Set. Set last update to now...
             $add_set = ', curr_ann_last_check = '.sqlesc($dt);
-            $mc1->begin_transaction('user' . $CURUSER['id']);
+            $user_id = (is_array($CURUSER) && isset($CURUSER['id'])) ? $CURUSER['id'] : 0;
+            $mc1->begin_transaction('user' . $user_id);
             $mc1->update_row(false, array(
             'curr_ann_last_check' => $dt
         ));
             $mc1->commit_transaction($INSTALLER09['expires']['user_cache']);
-            $mc1->begin_transaction('MyUser_' . $CURUSER['id']);
+            $user_id = (is_array($CURUSER) && isset($CURUSER['id'])) ? $CURUSER['id'] : 0;
+            $mc1->begin_transaction('MyUser_' . $user_id);
             $mc1->update_row(false, array(
             'curr_ann_last_check' => $dt
         ));
